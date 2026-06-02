@@ -88,7 +88,7 @@ export function processRawData(rows: RawRow[]): Isolate[] {
 
   const isolates: Isolate[] = [];
 
-  for (const [id, group] of groups) {
+  for (const [id, group] of Array.from(groups)) {
     const first = group[0];
     const date = parseDate(first.DatumOdberu);
 
