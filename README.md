@@ -2,7 +2,7 @@
 
 Interaktívna webová aplikácia na analýzu MDR kmeňov *S. aureus* a *S. epidermidis*.
 
-## Čo aplikácia robí
+## Čo aplikácia robí 
 
 - **Nahrávanie dát** — upload .xlsx alebo .csv exportu z nemocničného systému
 - **MDR kalkulácia** — podľa Magiorakos et al. 2012 (ECDC/CDC štandard)
