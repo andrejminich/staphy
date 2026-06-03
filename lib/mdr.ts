@@ -31,8 +31,16 @@ export const ATB_CATEGORIES: Record<string, string> = {
   'Kolistín': 'Polymyxíny',
 };
 
-export const NON_SUSCEPTIBLE = new Set(['R', 'SC', 'Sc']);
-export const MRSA_SCREEN_ATB = new Set(['Cefoxitín', 'Oxacilín']);
+export const NON_SUSCEPTIBLE_SET = new Set(['R', 'SC', 'Sc']);
+export const MRSA_SCREEN_ATB_SET = new Set(['Cefoxitín', 'Oxacilín']);
+
+// Use plain object instead of Set for compatibility
+function isNonSusceptible(val: string): boolean {
+  return val === 'R' || val === 'SC' || val === 'Sc';
+}
+function isMrsaScreen(atb: string): boolean {
+  return atb === 'Cefoxitín' || atb === 'Oxacilín';
+}
 
 export interface RawRow {
   rok: number;
@@ -56,7 +64,7 @@ export interface Isolate {
   oddelenie: string;
   oddeleniekod: string;
   material: string;
-  datumOdberu: string; // ISO string
+  datumOdberu: string;
   mesiac: number;
   tyzden: number;
   diagnoza: string;
@@ -70,65 +78,74 @@ export interface Isolate {
 function parseDate(val: string | Date | number): Date {
   if (val instanceof Date) return val;
   if (typeof val === 'number') {
-    // Excel serial date
     return new Date((val - 25569) * 86400 * 1000);
   }
   return new Date(val);
 }
 
 export function processRawData(rows: RawRow[]): Isolate[] {
-  // Group by isolate ID (first part of CisloProtokoluOKM before space)
-  const groups = new Map<string, RawRow[]>();
-  
-  for (const row of rows) {
+  // Group by isolate ID using plain object (no Map iteration needed)
+  const groups: Record<string, RawRow[]> = {};
+
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
     const id = String(row.CisloProtokoluOKM).split(' ')[0].trim();
-    if (!groups.has(id)) groups.set(id, []);
-    groups.get(id)!.push(row);
+    if (!groups[id]) groups[id] = [];
+    groups[id].push(row);
   }
 
+  const ids = Object.keys(groups);
   const isolates: Isolate[] = [];
 
-  for (const [id, group] of Array.from(groups.entries())) {
+  for (let i = 0; i < ids.length; i++) {
+    const id = ids[i];
+    const group = groups[id];
     const first = group[0];
     const date = parseDate(first.DatumOdberu);
 
     // Build ATB profile
     const atbProfile: Record<string, string> = {};
-    for (const row of group) {
-      atbProfile[row.NazovATB] = row.CitlivostATB;
+    for (let j = 0; j < group.length; j++) {
+      atbProfile[group[j].NazovATB] = group[j].CitlivostATB;
     }
 
-    // Check MRSA: cefoxitin/oxacillin screen (!) or resistance
-    const isMrsa = group.some(
-      r => MRSA_SCREEN_ATB.has(r.NazovATB) && 
-           (r.CitlivostATB === '!' || NON_SUSCEPTIBLE.has(r.CitlivostATB))
-    );
-
-    // Count resistant categories
-    const resistantCats = new Set<string>();
-    for (const row of group) {
-      if (NON_SUSCEPTIBLE.has(row.CitlivostATB) || row.CitlivostATB === '!') {
-        const cat = ATB_CATEGORIES[row.NazovATB];
-        if (cat) resistantCats.add(cat);
+    // Check MRSA
+    let isMrsa = false;
+    for (let j = 0; j < group.length; j++) {
+      const r = group[j];
+      if (isMrsaScreen(r.NazovATB) && (r.CitlivostATB === '!' || isNonSusceptible(r.CitlivostATB))) {
+        isMrsa = true;
+        break;
       }
     }
 
-    const isMdr = isMrsa || resistantCats.size >= 3;
+    // Count resistant categories using plain object
+    const resistantCatsObj: Record<string, boolean> = {};
+    for (let j = 0; j < group.length; j++) {
+      const r = group[j];
+      if (isNonSusceptible(r.CitlivostATB) || r.CitlivostATB === '!') {
+        const cat = ATB_CATEGORIES[r.NazovATB];
+        if (cat) resistantCatsObj[cat] = true;
+      }
+    }
+    const resistantCategories = Object.keys(resistantCatsObj);
+    const resistantCount = resistantCategories.length;
+    const isMdr = isMrsa || resistantCount >= 3;
 
     isolates.push({
       id,
-      patogen: first.Patogen?.trim() || '',
-      oddelenie: first.Oddelenie?.trim() || '',
-      oddeleniekod: first['Oddelenie Kod']?.trim() || '',
-      material: first.DruhMaterialu?.trim() || '',
+      patogen: first.Patogen ? first.Patogen.trim() : '',
+      oddelenie: first.Oddelenie ? first.Oddelenie.trim() : '',
+      oddeleniekod: first['Oddelenie Kod'] ? first['Oddelenie Kod'].trim() : '',
+      material: first.DruhMaterialu ? first.DruhMaterialu.trim() : '',
       datumOdberu: date.toISOString(),
       mesiac: date.getMonth() + 1,
-      tyzden: first.tyzden,
-      diagnoza: first.Diagnoza?.trim() || '',
+      tyzden: first.tyzden || 0,
+      diagnoza: first.Diagnoza ? first.Diagnoza.trim() : '',
       isMdr,
       isMrsa,
-      resistantCategories: Array.from(resistantCats),
-      resistantCount: resistantCats.size,
+      resistantCategories,
+      resistantCount,
       atbProfile,
     });
   }
@@ -147,10 +164,14 @@ export interface DashboardStats {
 }
 
 export function computeStats(isolates: Isolate[]): DashboardStats {
-  const mdr = isolates.filter(i => i.isMdr).length;
-  const mrsa = isolates.filter(i => i.isMrsa).length;
-  const aureus = isolates.filter(i => i.patogen.includes('aureus')).length;
-  const epidermidis = isolates.filter(i => i.patogen.includes('epidermidis')).length;
+  let mdr = 0, mrsa = 0, aureus = 0, epidermidis = 0;
+  for (let i = 0; i < isolates.length; i++) {
+    const iso = isolates[i];
+    if (iso.isMdr) mdr++;
+    if (iso.isMrsa) mrsa++;
+    if (iso.patogen.indexOf('aureus') >= 0) aureus++;
+    if (iso.patogen.indexOf('epidermidis') >= 0) epidermidis++;
+  }
   return {
     total: isolates.length,
     mdr,
@@ -166,14 +187,18 @@ export function getTopN<T extends string>(
   items: T[],
   n: number
 ): { name: T; count: number }[] {
-  const counts = new Map<T, number>();
-  for (const item of items) {
-    counts.set(item, (counts.get(item) || 0) + 1);
+  const counts: Record<string, number> = {};
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    counts[item] = (counts[item] || 0) + 1;
   }
-  return Array.from(counts.entries())
-    .map(([name, count]) => ({ name, count }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, n);
+  const keys = Object.keys(counts) as T[];
+  keys.sort((a, b) => counts[b] - counts[a]);
+  const result: { name: T; count: number }[] = [];
+  for (let i = 0; i < Math.min(n, keys.length); i++) {
+    result.push({ name: keys[i], count: counts[keys[i]] });
+  }
+  return result;
 }
 
 export const MONTH_NAMES: Record<number, string> = {
