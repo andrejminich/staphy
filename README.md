@@ -1,4 +1,4 @@
-# Rezistencia Dashboard · Kramáre
+# Rezistencia Dashboard · Kramáre 
 
 Interaktívna webová aplikácia na analýzu MDR kmeňov *S. aureus* a *S. epidermidis*.
 
