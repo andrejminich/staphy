@@ -6,7 +6,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell
 } from 'recharts';
-import { Upload, RefreshCw, AlertCircle, Dna } from 'lucide-react';
+import { Upload, RefreshCw, AlertCircle, FlaskConical } from 'lucide-react';
 import Image from 'next/image';
 
 const CC_MAP: Record<string, string> = {
