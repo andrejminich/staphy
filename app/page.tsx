@@ -6,7 +6,8 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, LineChart, Line, CartesianGrid, ReferenceLine
 } from 'recharts';
-import { Upload, RefreshCw, AlertCircle, TrendingUp, FlaskConical, Activity, Users, Shield } from 'lucide-react';
+import { Upload, RefreshCw, AlertCircle, TrendingUp, Activity, Users, Shield } from 'lucide-react';
+import Image from 'next/image';
 import {
   Isolate, computeStats, getTopN, MONTH_NAMES,
   processRawData, RawRow, PandemicPeriod, PANDEMIC_PERIODS, getPandemicPeriod
@@ -179,8 +180,7 @@ export default function Dashboard() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="card max-w-lg w-full mx-4 text-center">
-          <FlaskConical className="mx-auto mb-4 text-blue-700" size={48} />
-          <h1 className="text-2xl font-bold text-slate-800 mb-2">Rezistencia Dashboard</h1>
+          <Image src="/logo.png" alt="StaphySearch" width={280} height={75} className="mx-auto mb-6 w-64 h-auto" />
           <p className="text-slate-500 mb-2">Mikrobiologická analýza · Kramáre</p>
           <p className="text-slate-400 text-sm mb-8">Nahraj export zo systému (XLSX alebo CSV) pre začatie analýzy.</p>
           <label className="btn-primary cursor-pointer inline-flex items-center gap-2">
@@ -203,11 +203,8 @@ export default function Dashboard() {
       <header className="bg-white border-b border-slate-200 px-6 py-4 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <FlaskConical className="text-blue-700" size={24} />
-            <div>
-              <h1 className="font-bold text-slate-800 text-lg leading-tight">Rezistencia Dashboard</h1>
-              <p className="text-slate-400 text-xs">{fileName} · {allStats.total} izolátov</p>
-            </div>
+            <Image src="/logo.png" alt="StaphySearch" width={160} height={44} className="h-9 w-auto" />
+            <p className="text-slate-400 text-xs hidden md:block">{fileName} · {allStats.total} izolátov</p>
           </div>
           <label className="btn-outline cursor-pointer inline-flex items-center gap-2">
             {loading ? <RefreshCw size={14} className="animate-spin" /> : <Upload size={14} />}
