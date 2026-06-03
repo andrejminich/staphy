@@ -205,3 +205,20 @@ export const MONTH_NAMES: Record<number, string> = {
   1: 'Jan', 2: 'Feb', 3: 'Mar', 4: 'Apr', 5: 'Máj', 6: 'Jún',
   7: 'Júl', 8: 'Aug', 9: 'Sep', 10: 'Okt', 11: 'Nov', 12: 'Dec',
 };
+
+// ── Pandemic periods ──────────────────────────────────────────────────────
+export type PandemicPeriod = 'pred' | 'pocas' | 'po' | 'all';
+
+export const PANDEMIC_PERIODS: Record<PandemicPeriod, { label: string; from?: string; to?: string }> = {
+  all:  { label: 'Všetky' },
+  pred: { label: 'Pred pandémiou', to: '2020-03-11' },
+  pocas:{ label: 'Počas pandémie', from: '2020-03-12', to: '2023-09-15' },
+  po:   { label: 'Po pandémii', from: '2023-09-16' },
+};
+
+export function getPandemicPeriod(isoDate: string): PandemicPeriod {
+  const d = isoDate.slice(0, 10);
+  if (d <= '2020-03-11') return 'pred';
+  if (d <= '2023-09-15') return 'pocas';
+  return 'po';
+}
