@@ -142,7 +142,7 @@ export default function Chapter2() {
           </div>
         </header>
         <div className="max-w-2xl mx-auto px-4 py-12 text-center">
-          <Dna className="mx-auto mb-4 text-blue-700" size={40} />
+          <FlaskConical className="mx-auto mb-4 text-blue-700" size={40} />
           <h2 className="text-xl font-bold text-slate-800 mb-2">Kapitola 2 — Prospektívna štúdia</h2>
           <p className="text-slate-500 text-sm mb-8">Nahraj klinické dáta (CSV) a sekvenačné dáta (XLSX s MLST).</p>
           <div className="grid grid-cols-2 gap-4">
