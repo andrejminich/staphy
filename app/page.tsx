@@ -758,6 +758,108 @@ export default function Dashboard() {
   );
 }
 
+// ── Client-side Poisson regression (IRLS) ────────────────────────────────
+function fitPoisson(oddelenie: string, data: {rok:number;count:number;hosp:number;rate:number}[], metric: string): TrendResult {
+  const n = data.length;
+  if (n < 4 || data.every(d => d.count === 0)) {
+    return { oddelenie, data, irr:null, ci_low:null, ci_high:null, p_value:null, model:'insufficient', overdispersion:null, significant:false, direction:'ns', fitted:[] };
+  }
+
+  // Use count as outcome, log(hosp) as offset, rok as predictor
+  const y = data.map(d => d.count);
+  const offset = data.map(d => Math.log(Math.max(d.hosp, 1)));
+  const x = data.map(d => d.rok);
+  const xMean = x.reduce((a,b) => a+b, 0) / n;
+  const xc = x.map(v => v - xMean); // center for numerical stability
+
+  // IRLS for Poisson GLM: log(mu) = a + b*xc + offset
+  let a = Math.log(y.reduce((s,v) => s+v, 0) / y.length + 0.5);
+  let b = 0;
+
+  for (let iter = 0; iter < 50; iter++) {
+    const mu = xc.map((_,i) => Math.exp(a + b * xc[i] + offset[i]));
+    // Score equations
+    let sa = 0, sb = 0, Iaa = 0, Iab = 0, Ibb = 0;
+    for (let i = 0; i < n; i++) {
+      const r = y[i] - mu[i];
+      sa += r;
+      sb += r * xc[i];
+      Iaa += mu[i];
+      Iab += mu[i] * xc[i];
+      Ibb += mu[i] * xc[i] * xc[i];
+    }
+    const det = Iaa * Ibb - Iab * Iab;
+    if (Math.abs(det) < 1e-12) break;
+    const da = (Ibb * sa - Iab * sb) / det;
+    const db = (Iaa * sb - Iab * sa) / det;
+    a += da; b += db;
+    if (Math.abs(da) < 1e-8 && Math.abs(db) < 1e-8) break;
+  }
+
+  // Variance (Fisher information inverse)
+  const mu = xc.map((_,i) => Math.exp(a + b * xc[i] + offset[i]));
+  let Iaa = 0, Iab = 0, Ibb = 0;
+  for (let i = 0; i < n; i++) {
+    Iaa += mu[i]; Iab += mu[i] * xc[i]; Ibb += mu[i] * xc[i] * xc[i];
+  }
+  const det = Iaa * Ibb - Iab * Iab;
+  const varB = Math.abs(det) > 1e-12 ? Iaa / det : 1;
+
+  // Deviance and overdispersion
+  let deviance = 0;
+  for (let i = 0; i < n; i++) {
+    if (y[i] > 0) deviance += 2 * (y[i] * Math.log(y[i] / mu[i]) - (y[i] - mu[i]));
+    else deviance += 2 * mu[i];
+  }
+  const df = n - 2;
+  const phi = deviance / df; // overdispersion parameter
+
+  const useQP = phi > 1.5;
+  const seB = Math.sqrt(varB * (useQP ? phi : 1));
+  const irr = Math.exp(b);
+  const z = b / seB;
+
+  // Two-tailed p-value (normal approximation)
+  const pval = 2 * (1 - normalCDF(Math.abs(z)));
+  const z95 = 1.96;
+  const ci_low = Math.exp(b - z95 * seB);
+  const ci_high = Math.exp(b + z95 * seB);
+
+  // Fitted values with CI for original (uncentered) years
+  const fitted = data.map((d,i) => {
+    const xci = xc[i];
+    const logFit = a + b * xci + offset[i];
+    const seFit = Math.sqrt(varB * (useQP ? phi : 1) * xci * xci + 1/n); // approx
+    const fRate = Math.exp(logFit) / Math.max(d.hosp, 1) * 1000;
+    const fCount = Math.exp(logFit);
+    const val = metric === 'rate' ? fRate : fCount;
+    const cil = metric === 'rate' ? Math.exp(logFit - z95*seFit)/Math.max(d.hosp,1)*1000 : Math.exp(logFit - z95*seFit);
+    const cih = metric === 'rate' ? Math.exp(logFit + z95*seFit)/Math.max(d.hosp,1)*1000 : Math.exp(logFit + z95*seFit);
+    return { rok: d.rok, fitted: Math.round(val*100)/100, ci_low: Math.round(cil*100)/100, ci_high: Math.round(cih*100)/100 };
+  });
+
+  const sig = pval < 0.05;
+  return {
+    oddelenie, data,
+    irr: Math.round(irr * 1000) / 1000,
+    ci_low: Math.round(ci_low * 1000) / 1000,
+    ci_high: Math.round(ci_high * 1000) / 1000,
+    p_value: Math.round(pval * 10000) / 10000,
+    model: useQP ? 'quasi-poisson' : 'poisson',
+    overdispersion: Math.round(phi * 100) / 100,
+    significant: sig,
+    direction: sig ? (b > 0 ? 'up' : 'down') : 'ns',
+    fitted,
+  };
+}
+
+function normalCDF(x: number): number {
+  const t = 1 / (1 + 0.2316419 * x);
+  const poly = t * (0.319381530 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
+  return 1 - 0.3989422803 * Math.exp(-x * x / 2) * poly;
+}
+
+
 // ══════════════════════════════════════════════════════════════════════════
 // TRENDY TAB — Poisson regression, CI, export
 // ══════════════════════════════════════════════════════════════════════════
@@ -810,7 +912,7 @@ function TrendyTab({ base, hospData, hospTotal, ratePer1000 }: {
     }).filter(d => d.hosp > 0);
   };
 
-  const runAnalysis = async () => {
+  const runAnalysis = () => {
     if (!selectedOddelenia.length) return;
     setLoading(true); setError(null); setResults([]);
 
@@ -819,54 +921,14 @@ function TrendyTab({ base, hospData, hospTotal, ratePer1000 }: {
       data: buildOddData(od)
     }));
 
-    const prompt = `You are a biostatistician. For each ward, fit a Poisson regression model with year as predictor and hospitalization count as offset (log scale). Return IRR per year, 95% CI, p-value, deviance/df (overdispersion). If deviance/df > 1.5, use quasi-Poisson. Also return fitted values with 95% CI for each year.
-
-Data (count = isolates per year, hosp = hospitalizations, rate = per 1000 hosp):
-${JSON.stringify(oddData, null, 2)}
-
-Return ONLY valid JSON array, no markdown, no explanation:
-[{
-  "oddelenie": string,
-  "irr": number,
-  "ci_low": number,
-  "ci_high": number,
-  "p_value": number,
-  "overdispersion": number,
-  "model": "poisson" | "quasi-poisson" | "insufficient",
-  "fitted": [{"rok": number, "fitted": number, "ci_low": number, "ci_high": number}]
-}]
-
-Rules:
-- If <4 data points or all counts=0: model="insufficient", all nulls
-- Round IRR and CI to 3 decimals, p_value to 4 decimals
-- overdispersion = deviance/df (rounded to 2 decimals)
-- For quasi-Poisson: wider CI based on dispersion parameter`;
-
     try {
-      const resp = await fetch('/api/trends', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt })
-      });
-      if (!resp.ok) throw new Error(`API error: ${resp.status}`);
-      const data = await resp.json();
-      if (data.error) throw new Error(data.error);
-      const text = data.content?.map((c: { type: string; text?: string }) => c.type === 'text' ? c.text : '').join('') || '';
-      const clean = text.replace(/```json|```/g, '').trim();
-      const parsed = JSON.parse(clean);
-
-      const enriched: TrendResult[] = parsed.map((r: TrendResult) => {
-        const d = oddData.find(o => o.oddelenie === r.oddelenie);
-        return {
-          ...r,
-          data: d?.data || [],
-          significant: r.p_value !== null && r.p_value < 0.05,
-          direction: r.irr !== null ? (r.irr > 1 && r.p_value !== null && r.p_value < 0.05 ? 'up' : r.irr < 1 && r.p_value !== null && r.p_value < 0.05 ? 'down' : 'ns') : 'ns',
-        };
+      // Client-side Poisson regression via IRLS (no API needed)
+      const enriched: TrendResult[] = oddData.map(({ oddelenie, data }) => {
+        return fitPoisson(oddelenie, data, metric);
       });
       setResults(enriched);
     } catch (e) {
-      setError('Chyba pri analýze. Skús znova.');
+      setError('Chyba pri analýze: ' + String(e));
     } finally {
       setLoading(false);
     }
