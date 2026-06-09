@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  
+  if (!apiKey) {
+    return NextResponse.json({ error: 'ANTHROPIC_API_KEY not set' }, { status: 500 });
+  }
+
   try {
     const body = await req.json();
     const { prompt } = body;
@@ -10,21 +16,23 @@ export async function POST(req: NextRequest) {
       headers: {
         'Content-Type': 'application/json',
         'anthropic-version': '2023-06-01',
-        'x-api-key': process.env.ANTHROPIC_API_KEY || '',
+        'x-api-key': apiKey,
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-opus-4-6',
         max_tokens: 4000,
         messages: [{ role: 'user', content: prompt }]
       })
     });
 
+    const data = await resp.json();
+    
     if (!resp.ok) {
-      const err = await resp.text();
-      return NextResponse.json({ error: err }, { status: resp.status });
+      return NextResponse.json({ 
+        error: data.error?.message || JSON.stringify(data) 
+      }, { status: resp.status });
     }
 
-    const data = await resp.json();
     return NextResponse.json(data);
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
