@@ -13,7 +13,7 @@ Interaktívna webová aplikácia na analýzu MDR kmeňov *S. aureus* a *S. epide
 - **Grafy** — MDR/non-MDR trend, patogény po mesiacoch, materiály, oddelenia
 - **Tabuľka izolátov** — prehľad s MDR/MRSA statusom
 
-## Lokálne spustenie
+## Lokálne spustenie 
 
 ```bash
 npm install
