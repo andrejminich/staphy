@@ -101,6 +101,10 @@ export default function Dashboard() {
   const [aiComment, setAiComment] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [heatPeriod, setHeatPeriod] = useState<HeatPeriod>('mesiac');
+  const [heatPatogen, setHeatPatogen] = useState<FilterPatogen>('all');
+  const [heatMdr, setHeatMdr] = useState<FilterMdr>('all');
+  const [heatRok, setHeatRok] = useState<number | null>(null);
+  const [heatGroup, setHeatGroup] = useState<string | null>(null);
   const [pandemiaOddelenie, setPandemiaOddelenie] = useState<string | null>(null);
   const [pandemiaGroup, setPandemiaGroup] = useState<string | null>(null);
   // Slider for dynamic chart
@@ -273,6 +277,12 @@ export default function Dashboard() {
 
     for (const iso of base) {
       if (!isLôžkové(iso.oddelenie)) continue;
+      if (heatPatogen === 'aureus' && iso.patogen.indexOf('aureus') < 0) continue;
+      if (heatPatogen === 'epidermidis' && iso.patogen.indexOf('epidermidis') < 0) continue;
+      if (heatMdr === 'mdr' && !iso.isMdr) continue;
+      if (heatMdr === 'nonmdr' && iso.isMdr) continue;
+      if (heatRok !== null && iso.rok !== heatRok) continue;
+      if (heatGroup && getWardGroup(iso.oddelenie) !== heatGroup) continue;
       const d = new Date(iso.datumOdberu);
       let periodKey: string;
       if (heatPeriod === 'tyzdne') {
@@ -321,7 +331,7 @@ export default function Dashboard() {
       useRate,
       periodRok,
     };
-  }, [base, heatPeriod]);
+  }, [base, heatPeriod, heatPatogen, heatMdr, heatRok, heatGroup]);
 
   // ── PANDÉMIA data ──────────────────────────────────────────────────────
   const pandemiaPeriods = ['pred', 'pocas', 'po'] as const;
@@ -598,13 +608,44 @@ export default function Dashboard() {
         ══════════════════════════════════════════════════════════════ */}
         {activeTab === 'heatmapa' && (
           <div>
-            {/* Period selector */}
-            <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(26,95,168,0.08)', padding: '0.9rem 1.25rem', marginBottom: '1rem', display: 'flex', gap: 12, alignItems: 'center' }}>
-              <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Zobrazenie po</span>
-              {([['tyzdne','Týždeň'],['mesiac','Mesiac'],['kvartal','Kvartál'],['rok','Rok']] as [HeatPeriod, string][]).map(([v, l]) => (
-                <button key={v} onClick={() => setHeatPeriod(v)} className={`ss-chip ${heatPeriod === v ? 'active' : ''}`}>{l}</button>
-              ))}
-              <span style={{ fontSize: 11, color: '#94a3b8', marginLeft: 'auto' }}>Lôžkové oddelenia · Rok: ‰ per 1000 hosp. · Ostatné: absolútny počet</span>
+            {/* Heatmap filters */}
+            <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(26,95,168,0.08)', padding: '0.9rem 1.25rem', marginBottom: '1rem', display: 'flex', flexWrap: 'wrap', gap: 14, alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Zobrazenie po</span>
+                {([['tyzdne','Týždeň'],['mesiac','Mesiac'],['kvartal','Kvartál'],['rok','Rok']] as [HeatPeriod, string][]).map(([v, l]) => (
+                  <button key={v} onClick={() => setHeatPeriod(v)} className={`ss-chip ${heatPeriod === v ? 'active' : ''}`}>{l}</button>
+                ))}
+              </div>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>MDR</span>
+                {(['all','mdr','nonmdr'] as FilterMdr[]).map(v => (
+                  <button key={v} onClick={() => setHeatMdr(v)} className={`ss-chip ${heatMdr === v ? 'active' : ''}`}>{v === 'all' ? 'Všetky' : v === 'mdr' ? 'MDR' : 'Non-MDR'}</button>
+                ))}
+              </div>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Patogén</span>
+                {(['all','aureus','epidermidis'] as FilterPatogen[]).map(v => (
+                  <button key={v} onClick={() => setHeatPatogen(v)} className={`ss-chip ${heatPatogen === v ? 'active' : ''}`}>{v === 'all' ? 'Všetky' : `S. ${v}`}</button>
+                ))}
+              </div>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Rok</span>
+                <button onClick={() => setHeatRok(null)} className={`ss-chip ${heatRok === null ? 'active' : ''}`}>Všetky</button>
+                {availableRoky.map(r => (
+                  <button key={r} onClick={() => setHeatRok(heatRok === r ? null : r)} className={`ss-chip ${heatRok === r ? 'active' : ''}`}>{r}</button>
+                ))}
+              </div>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Skupina</span>
+                <button onClick={() => setHeatGroup(null)} className={`ss-chip ${!heatGroup ? 'active' : ''}`}>Všetky</button>
+                {WARD_GROUPS.map(g => (
+                  <button key={g.key} onClick={() => setHeatGroup(heatGroup === g.key ? null : g.key)} className={`ss-chip ${heatGroup === g.key ? 'active' : ''}`}>{g.label}</button>
+                ))}
+                {(heatMdr !== 'all' || heatPatogen !== 'all' || heatRok !== null || heatGroup) && (
+                  <button onClick={() => { setHeatMdr('all'); setHeatPatogen('all'); setHeatRok(null); setHeatGroup(null); }} style={{ fontSize: 11, color: SS_RED, cursor: 'pointer', background: 'none', border: 'none' }}>✕ zrušiť filtre</button>
+                )}
+              </div>
+              <span style={{ fontSize: 11, color: '#94a3b8', marginLeft: 'auto' }}>Lôžkové odd. · Rok: ‰/1000 hosp.</span>
             </div>
 
             {/* Heatmapa grid */}
