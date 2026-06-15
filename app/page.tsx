@@ -102,6 +102,7 @@ export default function Dashboard() {
   const [aiLoading, setAiLoading] = useState(false);
   const [heatPeriod, setHeatPeriod] = useState<HeatPeriod>('mesiac');
   const [pandemiaOddelenie, setPandemiaOddelenie] = useState<string | null>(null);
+  const [pandemiaGroup, setPandemiaGroup] = useState<string | null>(null);
   // Slider for dynamic chart
   const [sliderOffset, setSliderOffset] = useState(0); // quarters back from now
   const SLIDER_WINDOW = 8; // quarters shown
@@ -335,6 +336,7 @@ export default function Dashboard() {
         if (filterMdr === 'mdr' && !iso.isMdr) return false;
         if (filterMdr === 'nonmdr' && iso.isMdr) return false;
         if (pandemiaOddelenie && iso.oddelenie !== pandemiaOddelenie) return false;
+        if (pandemiaGroup && getWardGroup(iso.oddelenie) !== pandemiaGroup) return false;
         return true;
       });
       const s = computeStats(isos);
@@ -342,7 +344,7 @@ export default function Dashboard() {
       const topMat = getTopN(isos.map(i => i.material), 6);
       return { period, label: PANDEMIC_PERIODS[period].label, stats: s, topOdd, topMat, total: isos.length };
     });
-  }, [base, filterPatogen, filterMdr, pandemiaOddelenie]);
+  }, [base, filterPatogen, filterMdr, pandemiaOddelenie, pandemiaGroup]);
 
   const pandemiaTrendData = useMemo(() => {
     const byYear: Record<number, { mdr: number; nonmdr: number; total: number }> = {};
@@ -693,7 +695,7 @@ export default function Dashboard() {
         {activeTab === 'pandemia' && (
           <div>
             {/* Filters */}
-            <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(26,95,168,0.08)', padding: '0.9rem 1.25rem', marginBottom: '1rem', display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center' }}>
+            <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(26,95,168,0.08)', padding: '0.9rem 1.25rem', marginBottom: '1rem', display: 'flex', flexWrap: 'wrap', gap: 14, alignItems: 'center' }}>
               <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                 <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>MDR</span>
                 {(['all','mdr','nonmdr'] as FilterMdr[]).map(v => (
@@ -706,13 +708,20 @@ export default function Dashboard() {
                   <button key={v} onClick={() => setFilterPatogen(v)} className={`ss-chip ${filterPatogen === v ? 'active' : ''}`}>{v === 'all' ? 'Všetky' : `S. ${v}`}</button>
                 ))}
               </div>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Skupina</span>
+                <button onClick={() => { setPandemiaGroup(null); setPandemiaOddelenie(null); }} className={`ss-chip ${!pandemiaGroup ? 'active' : ''}`}>Všetky</button>
+                {WARD_GROUPS.map(g => (
+                  <button key={g.key} onClick={() => { setPandemiaGroup(pandemiaGroup === g.key ? null : g.key); setPandemiaOddelenie(null); }} className={`ss-chip ${pandemiaGroup === g.key ? 'active' : ''}`}>{g.label}</button>
+                ))}
+              </div>
               <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                 <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Oddelenie</span>
-                <select value={pandemiaOddelenie || ''} onChange={e => setPandemiaOddelenie(e.target.value || null)} style={{ fontSize: 12, padding: '5px 10px', borderRadius: 8, border: '1px solid rgba(26,95,168,0.15)', color: '#475569', background: '#fff' }}>
+                <select value={pandemiaOddelenie || ''} onChange={e => { setPandemiaOddelenie(e.target.value || null); if (e.target.value) setPandemiaGroup(null); }} style={{ fontSize: 12, padding: '5px 10px', borderRadius: 8, border: '1px solid rgba(26,95,168,0.15)', color: '#475569', background: '#fff' }}>
                   <option value="">— všetky —</option>
-                  {availableOddelenia.map(o => <option key={o} value={o}>{o}</option>)}
+                  {availableOddelenia.filter(o => !pandemiaGroup || getWardGroup(o) === pandemiaGroup).map(o => <option key={o} value={o}>{o}</option>)}
                 </select>
-                {pandemiaOddelenie && <button onClick={() => setPandemiaOddelenie(null)} style={{ fontSize: 11, color: SS_RED, cursor: 'pointer', background: 'none', border: 'none' }}>✕</button>}
+                {(pandemiaOddelenie || pandemiaGroup) && <button onClick={() => { setPandemiaOddelenie(null); setPandemiaGroup(null); }} style={{ fontSize: 11, color: SS_RED, cursor: 'pointer', background: 'none', border: 'none' }}>✕ zrušiť</button>}
               </div>
             </div>
 
