@@ -95,6 +95,8 @@ export default function Dashboard() {
   const [filterOddelenie, setFilterOddelenie] = useState<string | null>(null);
   const [filterGroup, setFilterGroup] = useState<string | null>(null);
   const [reportRok, setReportRok] = useState<number | null>(null);
+  const [aiComment, setAiComment] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
   const [heatPeriod, setHeatPeriod] = useState<HeatPeriod>('mesiac');
   const [pandemiaOddelenie, setPandemiaOddelenie] = useState<string | null>(null);
   // Slider for dynamic chart
@@ -172,6 +174,81 @@ export default function Dashboard() {
     return Object.keys(byYear).map(Number).sort((a, b) => a - b)
       .map(y => ({ rok: y.toString(), mdr: byYear[y].mdr, nonmdr: byYear[y].nonmdr }));
   }, [filtered]);
+
+  // EARS-Net reference data
+  const EARS_NET_LOCAL: Record<number, number> = {
+    2017:15.5, 2018:14.4, 2019:13.1, 2020:12.8, 2021:12.5, 2022:11.8, 2023:10.9
+  };
+
+  // Auto-generate AI comment when data changes
+  useEffect(() => {
+    if (!yearlyChartData.length) return;
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      setAiLoading(true);
+      setAiComment(null);
+      try {
+        // Build context for AI
+        const total = filtered.length;
+        const mdrTotal = filtered.filter(i => i.isMdr).length;
+        const mdrRate = total > 0 ? Math.round(mdrTotal/total*100) : 0;
+        const patogen = filterPat === 'all' ? 'S. aureus + S. epidermidis' : `S. ${filterPat}`;
+        const obdobie = filterRok ? `rok ${filterRok}` : `roky ${Math.min(...yearlyChartData.map(d=>Number(d.rok)))}–${Math.max(...yearlyChartData.map(d=>Number(d.rok)))}`;
+
+        // Trend calculation
+        const roky = yearlyChartData.map(d => Number(d.rok));
+        const mdrRates = yearlyChartData.map(d => {
+          const tot = d.mdr + d.nonmdr;
+          return tot > 0 ? Math.round(d.mdr/tot*100) : 0;
+        });
+        const firstRate = mdrRates[0];
+        const lastRate = mdrRates[mdrRates.length-1];
+        const trend = lastRate > firstRate ? 'rastúci' : lastRate < firstRate ? 'klesajúci' : 'stabilný';
+        const zmena = Math.abs(lastRate - firstRate);
+
+        // EARS-Net comparison
+        const availEarsYears = roky.filter(r => EARS_NET_LOCAL[r]);
+        const earsComparison = availEarsYears.length > 0
+          ? availEarsYears.map(r => `${r}: Kramáre ${mdrRates[roky.indexOf(r)]}% vs EU EARS-Net ${EARS_NET_LOCAL[r]}%`).join(', ')
+          : 'EARS-Net dáta nie sú dostupné pre vybrané obdobie';
+
+        const prompt = `Si epidemiológ píšuci krátky slovenský komentár k grafu antibiotickej rezistencie v nemocnici. Buď stručný, faktický a klinicky relevantný.
+
+DÁTA:
+- Nemocnica: Akademická nemocnica L. Dérera, Bratislava
+- Patogén: ${patogen}
+- Obdobie: ${obdobie}
+- Celkový počet izolátov: ${total}
+- MDR rate: ${mdrRate}%
+- Trend MDR rate: ${trend} (zmena ${zmena} percentuálnych bodov od ${firstRate}% na ${lastRate}%)
+- Ročné MDR rates: ${roky.map((r,i) => `${r}: ${mdrRates[i]}%`).join(', ')}
+- EARS-Net porovnanie (% MRSA z invazívnych izolátov SA): ${earsComparison}
+- Aktívne filtre: ${filterPat !== 'all' ? patogen : 'všetky patogény'}${filterGroup ? ', skupina: '+filterGroup : ''}
+
+Napíš 3–4 vety v slovenčine:
+1. Stručný popis trendu s konkrétnymi číslami
+2. Porovnanie s európskym priemerom EARS-Net (ak sú dáta)
+3. Klinická interpretácia alebo epidemiologická poznámka
+Bez nadpisov, len plynulý text.`;
+
+        const resp = await fetch('/api/trends', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt, type: 'comment' }),
+          signal: controller.signal,
+        });
+        if (!resp.ok) throw new Error('API error');
+        const data = await resp.json();
+        const text = data.content?.map((c: {type:string;text?:string}) => c.type==='text'?c.text:'').join('') || '';
+        setAiComment(text.trim());
+      } catch (e) {
+        if ((e as Error).name !== 'AbortError') setAiComment(null);
+      } finally {
+        setAiLoading(false);
+      }
+    }, 800); // debounce 800ms
+    return () => { controller.abort(); clearTimeout(timer); };
+  }, [yearlyChartData, filterPat, filterRok, filterGroup, filterMdr]);
 
   // Report isolates
   const reportIsos = useMemo(() => {
@@ -494,6 +571,32 @@ export default function Dashboard() {
                   <Bar dataKey="nonmdr" name="Non-MDR" stackId="a" fill={SS_TEAL} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
+            </div>
+
+            {/* AI komentár */}
+            <div style={{ background: 'linear-gradient(135deg,rgba(26,95,168,0.04),rgba(15,110,86,0.04))', borderRadius: 14, border: '1px solid rgba(26,95,168,0.1)', padding: '1rem 1.25rem', marginBottom: '1rem', minHeight: 72 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                <span style={{ fontSize: 20, flexShrink: 0 }}>🤖</span>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em', color: '#94a3b8', marginBottom: 6 }}>
+                    AI interpretácia · EARS-Net porovnanie
+                  </p>
+                  {aiLoading && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ width: 14, height: 14, border: '2px solid rgba(26,95,168,0.2)', borderTop: '2px solid #185FA5', borderRadius: '50%', animation: 'spin 0.8s linear infinite', flexShrink: 0 }}/>
+                      <span style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>Generujem komentár...</span>
+                    </div>
+                  )}
+                  {!aiLoading && aiComment && (
+                    <p style={{ fontSize: 13, color: '#334155', lineHeight: 1.65, margin: 0 }}>{aiComment}</p>
+                  )}
+                  {!aiLoading && !aiComment && (
+                    <p style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic', margin: 0 }}>
+                      {process.env.NODE_ENV === 'development' ? 'API kľúč potrebný pre AI komentár.' : 'Načítavam...'}
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
 
             {/* Report section - year selector */}
