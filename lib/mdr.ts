@@ -215,20 +215,21 @@ export const HOSP_TOTAL: Record<number, number> = {
 };
 
 export const HOSP_DATA: { keywords: string[]; data: Record<number, number> }[] = [
-  { keywords: ['i. intern', 'intern kl. szu', 'i.intern'], data: {2019:1347,2020:1144,2021:1230,2022:1258,2023:1139,2024:1066} },
-  { keywords: ['iii. intern', 'intern kl. lfuk', 'iii.intern'], data: {2019:1129,2020:1010,2021:1058,2022:895,2023:829,2024:956} },
-  { keywords: ['kigm', 'infektol', 'geograf'], data: {2019:2039,2020:1465,2021:1726,2022:1999,2023:1862,2024:1865} },
-  { keywords: ['ii. neurolog', 'neurolog klinika', 'neurologická kl'], data: {2019:1410,2020:1117,2021:873,2022:895,2023:1046,2024:1034} },
-  { keywords: ['gyn', 'pôrod', 'porod'], data: {2019:4012,2020:3266,2021:3285,2022:3414,2023:3009,2024:2283} },
-  { keywords: ['chirurgická kl', 'chirurgická k'], data: {2019:1711,2020:1348,2021:1292,2022:1366,2023:1333,2024:1301} },
-  { keywords: ['urologick'], data: {2019:1345,2020:1258,2021:1040,2022:1231,2023:1248,2024:1044} },
-  { keywords: ['úrazovej', 'urazovej', 'úraz.chir', 'uraz.chir'], data: {2019:1771,2020:1517,2021:1518,2022:1684,2023:1719,2024:1670} },
-  { keywords: ['anest', 'intenz. med', 'kl. anest'], data: {2019:168,2020:186,2021:199,2022:114,2023:110,2024:125} },
-  { keywords: ['neurochirurg'], data: {2019:1193,2020:806,2021:699,2022:723,2023:743,2024:781} },
-  { keywords: ['novorodeneck', 'neonat'], data: {2019:2074,2020:1787,2021:1824,2022:1860,2023:1725,2024:1245} },
-  { keywords: ['geriatri'], data: {2019:1149,2020:961,2021:600,2022:621,2023:624,2024:736} },
-  { keywords: ['nefrol', 'transpl'], data: {2024:362} },
-  { keywords: ['dlhodobo'], data: {2019:233,2020:259,2021:294,2022:252,2023:256,2024:250} },
+  // Generic codes (anonymized) + original names (backward compatible)
+  { keywords: ['int-1', 'i. intern', 'intern kl. szu', 'i.intern'], data: {2019:1347,2020:1144,2021:1230,2022:1258,2023:1139,2024:1066} },
+  { keywords: ['int-2', 'iii. intern', 'intern kl. lfuk', 'iii.intern'], data: {2019:1129,2020:1010,2021:1058,2022:895,2023:829,2024:956} },
+  { keywords: ['infekt-1', 'infekt-2', 'kigm', 'infektol', 'geograf'], data: {2019:2039,2020:1465,2021:1726,2022:1999,2023:1862,2024:1865} },
+  { keywords: ['neur-1', 'ii. neurolog', 'neurolog klinika', 'neurologická kl'], data: {2019:1410,2020:1117,2021:873,2022:895,2023:1046,2024:1034} },
+  { keywords: ['gyn-1', 'gyn', 'pôrod', 'porod'], data: {2019:4012,2020:3266,2021:3285,2022:3414,2023:3009,2024:2283} },
+  { keywords: ['chir-1', 'chirurgická kl', 'chirurgická k'], data: {2019:1711,2020:1348,2021:1292,2022:1366,2023:1333,2024:1301} },
+  { keywords: ['urol-1', 'urologick'], data: {2019:1345,2020:1258,2021:1040,2022:1231,2023:1248,2024:1044} },
+  { keywords: ['uraz-1', 'úrazovej', 'urazovej', 'úraz.chir', 'uraz.chir'], data: {2019:1771,2020:1517,2021:1518,2022:1684,2023:1719,2024:1670} },
+  { keywords: ['icu-1', 'anest', 'intenz. med', 'kl. anest'], data: {2019:168,2020:186,2021:199,2022:114,2023:110,2024:125} },
+  { keywords: ['neurochir-1', 'neurochirurg'], data: {2019:1193,2020:806,2021:699,2022:723,2023:743,2024:781} },
+  { keywords: ['neonat-1', 'novorodeneck', 'neonat'], data: {2019:2074,2020:1787,2021:1824,2022:1860,2023:1725,2024:1245} },
+  { keywords: ['ger-1', 'geriatri'], data: {2019:1149,2020:961,2021:600,2022:621,2023:624,2024:736} },
+  { keywords: ['nefr-1', 'nefrol', 'transpl'], data: {2024:362} },
+  { keywords: ['odch-1', 'dlhodobo'], data: {2019:233,2020:259,2021:294,2022:252,2023:256,2024:250} },
 ];
 
 export function getHospCount(oddelenie: string, rok: number): { count: number; isApprox: boolean } {
