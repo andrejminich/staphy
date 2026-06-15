@@ -161,6 +161,23 @@ export default function Dashboard() {
     return Object.keys(s).sort();
   }, [base]);
 
+  // Yearly chart data
+  const yearlyChartData = useMemo(() => {
+    const byYear: Record<number, { mdr: number; nonmdr: number }> = {};
+    for (const iso of filtered) {
+      const y = iso.rok;
+      if (!byYear[y]) byYear[y] = { mdr: 0, nonmdr: 0 };
+      if (iso.isMdr) byYear[y].mdr++; else byYear[y].nonmdr++;
+    }
+    return Object.keys(byYear).map(Number).sort((a, b) => a - b)
+      .map(y => ({ rok: y.toString(), mdr: byYear[y].mdr, nonmdr: byYear[y].nonmdr }));
+  }, [filtered]);
+
+  // Report isolates
+  const reportIsos = useMemo(() => {
+    return filtered.filter(iso => reportRok === null || iso.rok === reportRok);
+  }, [filtered, reportRok]);
+
   // ── PREHĽAD: Last 2 quarters dynamic ──────────────────────────────────
   // Build quarter list from data
   const allQuarters = useMemo(() => {
