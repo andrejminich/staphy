@@ -22,12 +22,12 @@ const CHART_COLORS = [SS_BLUE, SS_TEAL, '#7c3aed', SS_ORANGE, '#0891b2', SS_GREE
 
 // ── Ward groups (ECDC/HAI-Net classification) ────────────────────────────
 const WARD_GROUPS: { key: string; label: string; keywords: string[] }[] = [
-  { key: 'icu', label: 'ICU / Intenzívna', keywords: ['anest', 'intenz', 'jis', 'icu', 'arip'] },
-  { key: 'surgical', label: 'Chirurgické', keywords: ['chirurg', 'úrazov', 'urazov', 'neurochirurg', 'urologick'] },
-  { key: 'medical', label: 'Interné / Medicínske', keywords: ['interná', 'interna', 'neurolog', 'geriatr', 'nefrol'] },
-  { key: 'infectious', label: 'Infektológia', keywords: ['kigm', 'infektol', 'geograf'] },
-  { key: 'neonatal', label: 'Novorodenecké / Pôrodné', keywords: ['novorodeneck', 'neonat', 'gyn', 'pôrod', 'porod'] },
-  { key: 'longterm', label: 'Dlhodobá starostlivosť', keywords: ['dlhodobo', 'dlhod'] },
+  { key: 'icu', label: 'ICU / Intenzívna', keywords: ['icu-', 'anest', 'intenz', 'jis', 'arip'] },
+  { key: 'surgical', label: 'Chirurgické', keywords: ['chir-', 'uraz-', 'neurochir-', 'urol-', 'chirurg', 'úrazov', 'urazov', 'neurochirurg', 'urologick'] },
+  { key: 'medical', label: 'Interné / Medicínske', keywords: ['int-', 'neur-', 'ger-', 'nefr-', 'interná', 'interna', 'neurolog', 'geriatr', 'nefrol'] },
+  { key: 'infectious', label: 'Infektológia', keywords: ['infekt-', 'kigm', 'infektol', 'geograf'] },
+  { key: 'neonatal', label: 'Novorodenecké / Pôrodné', keywords: ['neonat-', 'gyn-', 'novorodeneck', 'neonat', 'gyn', 'pôrod', 'porod'] },
+  { key: 'longterm', label: 'Dlhodobá starostlivosť', keywords: ['odch-', 'dlhodobo', 'dlhod'] },
 ];
 
 function getWardGroup(oddelenie: string): string {
@@ -41,7 +41,10 @@ function getWardGroup(oddelenie: string): string {
 // Exclude ambulances and Ružinov
 function shouldExclude(oddelenie: string): boolean {
   const lower = oddelenie.toLowerCase();
-  return lower.includes('amb') || lower.includes(' ru ') || lower.startsWith('ru ') || lower.includes('ružinov') || lower.includes('ruzinov');
+  // Exclude ambulancie (AMB- prefix or 'amb' in name) and Ružinov (RU codes/names)
+  return lower.startsWith('amb-') || lower.includes('amb') || 
+         lower.startsWith('ru-') || lower.includes(' ru ') || 
+         lower.startsWith('ru ') || lower.includes('ružinov') || lower.includes('ruzinov');
 }
 
 // Only years >= 2017
