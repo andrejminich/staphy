@@ -94,6 +94,7 @@ export default function Dashboard() {
   const [filterRok, setFilterRok] = useState<number | null>(null);
   const [filterOddelenie, setFilterOddelenie] = useState<string | null>(null);
   const [filterGroup, setFilterGroup] = useState<string | null>(null);
+  const [reportRok, setReportRok] = useState<number | null>(null);
   const [heatPeriod, setHeatPeriod] = useState<HeatPeriod>('mesiac');
   const [pandemiaOddelenie, setPandemiaOddelenie] = useState<string | null>(null);
   // Slider for dynamic chart
@@ -457,24 +458,19 @@ export default function Dashboard() {
               ))}
             </div>
 
-            {/* Dynamic quarterly chart + slider */}
+            {/* Yearly chart */}
             <div style={{ background: '#fff', borderRadius: 16, border: '1px solid rgba(26,95,168,0.08)', padding: '1.25rem 1.5rem', marginBottom: '1rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <p style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#94a3b8', margin: 0 }}>Kvartálny vývoj — MDR kmeňov</p>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <button onClick={() => setSliderOffset(Math.min(maxOffset, sliderOffset + 1))} disabled={sliderOffset >= maxOffset} style={{ padding: '4px 8px', borderRadius: 7, border: '1px solid #e2e8f0', background: '#fff', cursor: sliderOffset >= maxOffset ? 'not-allowed' : 'pointer', color: sliderOffset >= maxOffset ? '#cbd5e1' : '#475569', display: 'flex', alignItems: 'center' }}>
-                    <ChevronLeft size={14} />
-                  </button>
-                  <span style={{ fontSize: 11, color: '#64748b' }}>{visibleQuarters[0]?.label} – {visibleQuarters[visibleQuarters.length - 1]?.label}</span>
-                  <button onClick={() => setSliderOffset(Math.max(0, sliderOffset - 1))} disabled={sliderOffset <= 0} style={{ padding: '4px 8px', borderRadius: 7, border: '1px solid #e2e8f0', background: '#fff', cursor: sliderOffset <= 0 ? 'not-allowed' : 'pointer', color: sliderOffset <= 0 ? '#cbd5e1' : '#475569', display: 'flex', alignItems: 'center' }}>
-                    <ChevronRight size={14} />
-                  </button>
+                <p style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#94a3b8', margin: 0 }}>Ročný vývoj — MDR kmeňov</p>
+                <div style={{ display: 'flex', gap: 10, fontSize: 11, color: '#64748b', alignItems: 'center' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 10, height: 10, background: SS_RED, borderRadius: 2, display: 'inline-block' }}/> MDR</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 10, height: 10, background: SS_TEAL, borderRadius: 2, display: 'inline-block' }}/> Non-MDR</span>
                 </div>
               </div>
               <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={quarterChartData} margin={{ top: 5, right: 5, left: -10, bottom: 0 }}>
+                <BarChart data={yearlyChartData} margin={{ top: 5, right: 5, left: -10, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                  <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                  <XAxis dataKey="rok" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 11 }} />
                   <Tooltip content={<CustomTooltip />} />
                   <Bar dataKey="mdr" name="MDR" stackId="a" fill={SS_RED} />
@@ -483,23 +479,26 @@ export default function Dashboard() {
               </ResponsiveContainer>
             </div>
 
-            {/* Last 2Q sections */}
-            <div style={{ background: 'linear-gradient(135deg, #0a1628, #0f3460)', borderRadius: 12, padding: '8px 16px', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Posledné 2 kvartály</span>
-              <span style={{ fontSize: 12, color: SS_TEAL, fontWeight: 600 }}>{last2Q.map(q => q.label).join(' · ')}</span>
-              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginLeft: 'auto' }}>{last2QIsos.length} izolátov</span>
+            {/* Report section - year selector */}
+            <div style={{ background: 'linear-gradient(135deg, #0a1628, #0f3460)', borderRadius: 12, padding: '10px 16px', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Prehľad za obdobie</span>
+              <button onClick={() => setReportRok(null)} style={{ fontSize: 11, padding: '3px 12px', borderRadius: 99, border: '1px solid transparent', cursor: 'pointer', background: reportRok === null ? 'rgba(0,184,150,0.3)' : 'rgba(255,255,255,0.08)', color: '#fff', borderColor: reportRok === null ? 'rgba(0,184,150,0.5)' : 'transparent' }}>Všetky roky</button>
+              {availableRoky.map(r => (
+                <button key={r} onClick={() => setReportRok(reportRok === r ? null : r)} style={{ fontSize: 11, padding: '3px 12px', borderRadius: 99, border: '1px solid transparent', cursor: 'pointer', background: reportRok === r ? 'rgba(0,184,150,0.3)' : 'rgba(255,255,255,0.08)', color: '#fff', borderColor: reportRok === r ? 'rgba(0,184,150,0.5)' : 'transparent' }}>{r}</button>
+              ))}
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginLeft: 'auto' }}>{reportIsos.length} izolátov</span>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
               {/* Top oddelenia - počet */}
               <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(26,95,168,0.08)', padding: '1.1rem 1.25rem' }}>
                 <p style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#94a3b8', margin: '0 0 12px' }}>Oddelenia — počet kmeňov</p>
-                {topOddLast2Q.map(({ name, count }, i) => (
+                {getTopN(reportIsos.map(i => i.oddelenie), 8).map(({ name, count }, i) => (
                   <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
                     <span style={{ fontSize: 10, color: '#cbd5e1', width: 14, textAlign: 'right', fontFamily: 'monospace' }}>{i + 1}</span>
                     <span style={{ flex: 1, fontSize: 11.5, color: '#334155', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={name}>{name}</span>
                     <div style={{ width: 60, background: '#f1f5f9', borderRadius: 3, height: 12, overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${pct(count, last2QIsos.length)}%`, background: `linear-gradient(90deg,${SS_BLUE},${SS_TEAL})`, borderRadius: 3 }} />
+                      <div style={{ height: '100%', width: `${pct(count, reportIsos.length)}%`, background: `linear-gradient(90deg,${SS_BLUE},${SS_TEAL})`, borderRadius: 3 }} />
                     </div>
                     <span style={{ fontSize: 11, fontFamily: 'monospace', color: '#64748b', width: 22, textAlign: 'right' }}>{count}</span>
                   </div>
@@ -509,12 +508,12 @@ export default function Dashboard() {
               {/* Top oddelenia - MDR */}
               <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(26,95,168,0.08)', padding: '1.1rem 1.25rem' }}>
                 <p style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#94a3b8', margin: '0 0 12px' }}>Oddelenia — MDR kmene</p>
-                {topOddMdrLast2Q.map(({ name, count }, i) => (
+                {getTopN(reportIsos.filter(i => i.isMdr).map(i => i.oddelenie), 8).map(({ name, count }, i) => (
                   <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
                     <span style={{ fontSize: 10, color: '#cbd5e1', width: 14, textAlign: 'right', fontFamily: 'monospace' }}>{i + 1}</span>
                     <span style={{ flex: 1, fontSize: 11.5, color: '#334155', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={name}>{name}</span>
                     <div style={{ width: 60, background: '#f1f5f9', borderRadius: 3, height: 12, overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${pct(count, last2QIsos.filter(i => i.isMdr).length)}%`, background: SS_RED, borderRadius: 3 }} />
+                      <div style={{ height: '100%', width: `${pct(count, reportIsos.filter(i => i.isMdr).length)}%`, background: SS_RED, borderRadius: 3 }} />
                     </div>
                     <span style={{ fontSize: 11, fontFamily: 'monospace', color: SS_RED, width: 22, textAlign: 'right' }}>{count}</span>
                   </div>
@@ -524,12 +523,12 @@ export default function Dashboard() {
               {/* Top materiály */}
               <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(26,95,168,0.08)', padding: '1.1rem 1.25rem' }}>
                 <p style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#94a3b8', margin: '0 0 12px' }}>Najčastejšie materiály</p>
-                {topMatLast2Q.map(({ name, count }, i) => (
+                {getTopN(reportIsos.map(i => i.material), 8).map(({ name, count }, i) => (
                   <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
                     <span style={{ fontSize: 10, color: '#cbd5e1', width: 14, textAlign: 'right', fontFamily: 'monospace' }}>{i + 1}</span>
                     <span style={{ flex: 1, fontSize: 11.5, color: '#334155', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
                     <div style={{ width: 60, background: '#f1f5f9', borderRadius: 3, height: 12, overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${pct(count, last2QIsos.length)}%`, background: `linear-gradient(90deg,${SS_TEAL},${SS_BLUE})`, borderRadius: 3 }} />
+                      <div style={{ height: '100%', width: `${pct(count, reportIsos.length)}%`, background: `linear-gradient(90deg,${SS_TEAL},${SS_BLUE})`, borderRadius: 3 }} />
                     </div>
                     <span style={{ fontSize: 11, fontFamily: 'monospace', color: '#64748b', width: 22, textAlign: 'right' }}>{count}</span>
                   </div>
