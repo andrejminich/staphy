@@ -853,7 +853,7 @@ export default function Dashboard() {
         )}
 
         <footer style={{ textAlign: 'center', fontSize: 10.5, color: '#94a3b8', padding: '1.5rem 0', marginTop: '0.5rem' }}>
-          StaphySearch · MDR: Magiorakos et al. 2012 (ECDC/CDC) · Ambulancie a Ružinov sú vylúčené · Rok 2016 vylúčený
+          StaphySearch · MDR: Magiorakos et al. 2012 (ECDC/CDC)
         </footer>
       </main>
     </div>
